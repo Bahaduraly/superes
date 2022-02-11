@@ -119,12 +119,12 @@ def main():
                 psnr_b = util.calculate_psnrb(
                     output, img_gt, crop_border=border, test_y_channel=True)
                 test_results['psnr_b'].append(psnr_b)
-            print('Testing {:d} {:20s} - PSNR: {:.2f} dB; SSIM: {:.4f}; '
-                  'PSNR_Y: {:.2f} dB; SSIM_Y: {:.4f}; '
-                  'PSNR_B: {:.2f} dB.'.
-                  format(idx, imgname, psnr, ssim, psnr_y, ssim_y, psnr_b))
-        else:
-            print('Testing {:d} {:20s}'.format(idx, imgname))
+            # print('Testing {:d} {:20s} - PSNR: {:.2f} dB; SSIM: {:.4f}; '
+            #       'PSNR_Y: {:.2f} dB; SSIM_Y: {:.4f}; '
+            #       'PSNR_B: {:.2f} dB.'.
+            #       format(idx, imgname, psnr, ssim, psnr_y, ssim_y, psnr_b))
+        # else:
+        #     print('Testing {:d} {:20s}'.format(idx, imgname))
 
     # summarize psnr/ssim
         if img_gt is not None:
