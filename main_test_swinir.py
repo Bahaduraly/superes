@@ -12,6 +12,52 @@ from models.network_swinir import SwinIR as net
 from utils import util_calculate_psnr_ssim as util
 
 
+def get_image_pair(args, path):
+    (imgname, imgext) = os.path.splitext(os.path.basename(path))
+
+    # 001 classical image sr/ 002 lightweight image sr (load lq-gt image pairs)
+    if args.task in ['classical_sr', 'lightweight_sr']:
+        img_gt = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
+        img_lq = cv2.imread(f'{args.folder_lq}/{imgname}x{args.scale}{imgext}', cv2.IMREAD_COLOR).astype(
+            np.float32) / 255.
+
+    # 003 real-world image sr (load lq image only)
+    elif args.task in ['real_sr']:
+        img_gt = None
+        img_lq = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
+
+    # 004 grayscale image denoising (load gt image and generate lq image on-the-fly)
+    elif args.task in ['gray_dn']:
+        img_gt = cv2.imread(path, cv2.IMREAD_GRAYSCALE).astype(
+            np.float32) / 255.
+        np.random.seed(seed=0)
+        img_lq = img_gt + np.random.normal(0, args.noise / 255., img_gt.shape)
+        img_gt = np.expand_dims(img_gt, axis=2)
+        img_lq = np.expand_dims(img_lq, axis=2)
+
+    # 005 color image denoising (load gt image and generate lq image on-the-fly)
+    elif args.task in ['color_dn']:
+        img_gt = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
+        np.random.seed(seed=0)
+        img_lq = img_gt + np.random.normal(0, args.noise / 255., img_gt.shape)
+
+    # 006 JPEG compression artifact reduction (load gt image and generate lq image on-the-fly)
+    elif args.task in ['jpeg_car']:
+        img_gt = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if img_gt.ndim != 2:
+            img_gt = util.bgr2ycbcr(img_gt, y_only=True)
+        result, encimg = cv2.imencode(
+            '.jpg', img_gt, [int(cv2.IMWRITE_JPEG_QUALITY), args.jpeg])
+        img_lq = cv2.imdecode(encimg, 0)
+        img_gt = np.expand_dims(img_gt, axis=2).astype(np.float32) / 255.
+        img_lq = np.expand_dims(img_lq, axis=2).astype(np.float32) / 255.
+
+    return imgname, img_lq, img_gt
+
+
+
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='color_dn', help='classical_sr, lightweight_sr, real_sr, '
@@ -211,45 +257,6 @@ def setup(args):
     return folder, save_dir, border, window_size
 
 
-def get_image_pair(args, path):
-    (imgname, imgext) = os.path.splitext(os.path.basename(path))
-
-    # 001 classical image sr/ 002 lightweight image sr (load lq-gt image pairs)
-    if args.task in ['classical_sr', 'lightweight_sr']:
-        img_gt = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
-        img_lq = cv2.imread(f'{args.folder_lq}/{imgname}x{args.scale}{imgext}', cv2.IMREAD_COLOR).astype(
-            np.float32) / 255.
-
-    # 003 real-world image sr (load lq image only)
-    elif args.task in ['real_sr']:
-        img_gt = None
-        img_lq = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
-
-    # 004 grayscale image denoising (load gt image and generate lq image on-the-fly)
-    elif args.task in ['gray_dn']:
-        img_gt = cv2.imread(path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
-        np.random.seed(seed=0)
-        img_lq = img_gt + np.random.normal(0, args.noise / 255., img_gt.shape)
-        img_gt = np.expand_dims(img_gt, axis=2)
-        img_lq = np.expand_dims(img_lq, axis=2)
-
-    # 005 color image denoising (load gt image and generate lq image on-the-fly)
-    elif args.task in ['color_dn']:
-        img_gt = cv2.imread(path, cv2.IMREAD_COLOR).astype(np.float32) / 255.
-        np.random.seed(seed=0)
-        img_lq = img_gt + np.random.normal(0, args.noise / 255., img_gt.shape)
-
-    # 006 JPEG compression artifact reduction (load gt image and generate lq image on-the-fly)
-    elif args.task in ['jpeg_car']:
-        img_gt = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-        if img_gt.ndim != 2:
-            img_gt = util.bgr2ycbcr(img_gt, y_only=True)
-        result, encimg = cv2.imencode('.jpg', img_gt, [int(cv2.IMWRITE_JPEG_QUALITY), args.jpeg])
-        img_lq = cv2.imdecode(encimg, 0)
-        img_gt = np.expand_dims(img_gt, axis=2).astype(np.float32) / 255.
-        img_lq = np.expand_dims(img_lq, axis=2).astype(np.float32) / 255.
-
-    return imgname, img_lq, img_gt
 
 
 def test(img_lq, model, args, window_size):
